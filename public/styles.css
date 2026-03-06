@@ -295,6 +295,46 @@ th {
   font-weight: 700;
 }
 
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  border: 2px solid var(--black);
+  background: linear-gradient(120deg, rgba(15, 122, 47, 0.08), rgba(196, 0, 24, 0.06));
+  padding: 0.8rem;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 4px solid rgba(17, 17, 17, 0.2);
+  border-top-color: var(--green);
+  border-right-color: var(--red);
+  animation: spin 0.9s linear infinite;
+  flex: 0 0 auto;
+}
+
+.loading-copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.loading-copy p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 980px) {
   .hero-controls {
     grid-template-columns: 1fr;

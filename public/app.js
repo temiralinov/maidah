@@ -306,6 +306,7 @@ const syncUrlState = (pushHistory) => {
 const setDateInputMode = () => {
   if (state.selectedPeriod === "all") {
     dateControl.style.display = "none";
+    dateInput.disabled = true;
     return;
   }
 
@@ -318,6 +319,8 @@ const setDateInputMode = () => {
     dateInput.type = "date";
     dateInput.value = state.selectedDay;
   }
+
+  dateInput.disabled = applyButton.disabled;
 };
 
 const updateDateStateFromInput = () => {
@@ -370,12 +373,34 @@ const syncStateFromStats = (stats) => {
   persistLocalState();
 };
 
+const setLoadingState = (loading) => {
+  applyButton.disabled = loading;
+  periodSelect.disabled = loading;
+  restaurantSelect.disabled = loading || !state.canSelectRestaurant;
+  applyButton.textContent = loading ? "Загрузка..." : "Показать";
+  setDateInputMode();
+};
+
 const showLoading = () => {
   destroyCharts();
-  app.innerHTML = panel("Загрузка", "<p>Формируем отчет...</p>", true);
+  updatedAtEl.textContent = "Обновлено: считаем отчет...";
+  app.innerHTML = panel(
+    "Загрузка",
+    `
+      <div class="loading-state" role="status" aria-live="polite">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <div class="loading-copy">
+          <strong>Считаем статистику по архиву...</strong>
+          <p>При большом объеме данных это может занять немного времени.</p>
+        </div>
+      </div>
+    `,
+    true,
+  );
 };
 
 const showError = () => {
+  setLoadingState(false);
   destroyCharts();
   app.innerHTML = panel(
     "Нет данных",
@@ -810,6 +835,7 @@ const loadRestaurants = async () => {
   }
 
   restaurantSelect.value = state.selectedRestaurantId;
+  setLoadingState(applyButton.disabled);
 };
 
 const loadPreferences = () => {
@@ -829,23 +855,28 @@ const loadPreferences = () => {
 };
 
 const loadStats = async ({ pushHistory = false } = {}) => {
+  setLoadingState(true);
   showLoading();
 
-  const query = buildApiQuery();
-  const url = query.length > 0 ? `/api/stats?${query}` : "/api/stats";
+  try {
+    const query = buildApiQuery();
+    const url = query.length > 0 ? `/api/stats?${query}` : "/api/stats";
 
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error("stats");
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error("stats");
+    }
+
+    const payload = await response.json();
+    if (!payload || !payload.data) {
+      throw new Error("stats_payload");
+    }
+
+    renderDashboard(payload.data);
+    syncUrlState(pushHistory);
+  } finally {
+    setLoadingState(false);
   }
-
-  const payload = await response.json();
-  if (!payload || !payload.data) {
-    throw new Error("stats_payload");
-  }
-
-  renderDashboard(payload.data);
-  syncUrlState(pushHistory);
 };
 
 const bindEvents = () => {

@@ -2,6 +2,7 @@ import path from "node:path";
 import express from "express";
 import { Pool } from "pg";
 import { config } from "./config";
+import { ensureAnalyticsIndexes } from "./dbIndexes";
 import {
   loadDashboardStats,
   loadRestaurantsPayload,
@@ -21,6 +22,8 @@ const pool = new Pool({
   max: config.db.poolMax,
   idleTimeoutMillis: config.db.poolIdleTimeoutMs,
 });
+
+void ensureAnalyticsIndexes(pool);
 
 const publicDir = path.resolve(process.cwd(), "public");
 

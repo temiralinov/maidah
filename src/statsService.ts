@@ -158,6 +158,8 @@ type Scope = {
   selectedRestaurantLabel: string;
 };
 
+const TOP_PRODUCTS_LIMIT = 20;
+
 const BASE_CTE = `
 WITH scoped_orders AS (
   SELECT
@@ -925,47 +927,6 @@ export const loadDashboardStats = async (
     params,
   );
 
-  const qualityPromise = pool.query(
-    `${BASE_CTE}
-    SELECT
-      (SELECT COUNT(*)::int FROM period_orders WHERE finished_at IS NULL OR BTRIM(finished_at) = '') AS without_finished_at,
-      (SELECT COUNT(*)::int FROM period_orders WHERE client_id IS NULL OR BTRIM(client_id) = '') AS without_client_id,
-      (
-        SELECT COUNT(*)::int
-        FROM period_orders o
-        LEFT JOIN period_products p ON p.order_id = o.id
-        WHERE p.order_id IS NULL
-      ) AS without_products
-    `,
-    params,
-  );
-
-  const statusPromise = pool.query(
-    `${BASE_CTE}
-    SELECT
-      COALESCE(NULLIF(status, ''), 'Без статуса') AS label,
-      COUNT(*)::int AS value
-    FROM period_orders
-    GROUP BY 1
-    ORDER BY value DESC, label
-    LIMIT 12
-    `,
-    params,
-  );
-
-  const paymentPromise = pool.query(
-    `${BASE_CTE}
-    SELECT
-      COALESCE(NULLIF(payment_type, ''), 'Не указано') AS label,
-      COUNT(*)::int AS value
-    FROM period_orders
-    GROUP BY 1
-    ORDER BY value DESC, label
-    LIMIT 12
-    `,
-    params,
-  );
-
   const timelinePromise = pool.query(
     `${BASE_CTE},
     grouped AS (
@@ -1006,6 +967,7 @@ export const loadDashboardStats = async (
     FROM period_products
     GROUP BY 1
     ORDER BY revenue DESC, units DESC, name
+    LIMIT ${TOP_PRODUCTS_LIMIT}
     `,
     params,
   );
@@ -1062,111 +1024,31 @@ export const loadDashboardStats = async (
     params,
   );
 
-  const unitVsNetworkPromise = scope.selectedRestaurantId.length > 0
-    ? pool.query(
-        `
-        WITH valid_orders AS (
-          SELECT
-            store_id,
-            company_id,
-            CASE
-              WHEN created_at IS NOT NULL
-                AND BTRIM(created_at) <> ''
-                AND pg_input_is_valid(created_at, 'timestamptz')
-              THEN (created_at::timestamptz AT TIME ZONE $4)
-              ELSE NULL
-            END AS created_ts,
-            COALESCE(price, 0)::double precision AS price
-          FROM orders
-          WHERE store_id IS NOT NULL
-            AND BTRIM(store_id) <> ''
-            AND ($2 = '' OR company_id = $2)
-            AND COALESCE(NULLIF(LOWER(BTRIM(status)), ''), '') = ANY($3::text[])
-        ),
-        monthly AS (
-          SELECT
-            store_id,
-            company_id,
-            DATE_TRUNC('month', created_ts)::date AS month_date,
-            COALESCE(SUM(price), 0)::double precision AS revenue
-          FROM valid_orders
-          WHERE created_ts IS NOT NULL
-          GROUP BY 1, 2, 3
-        ),
-        aged AS (
-          SELECT
-            store_id,
-            company_id,
-            month_date,
-            revenue,
-            (
-              (EXTRACT(YEAR FROM month_date)::int * 12 + EXTRACT(MONTH FROM month_date)::int)
-              - (
-                EXTRACT(YEAR FROM MIN(month_date) OVER (PARTITION BY store_id))::int * 12
-                + EXTRACT(MONTH FROM MIN(month_date) OVER (PARTITION BY store_id))::int
-              )
-              + 1
-            )::int AS age_month
-          FROM monthly
-        ),
-        unit_series AS (
-          SELECT
-            month_date,
-            age_month,
-            revenue AS unit_revenue
-          FROM aged
-          WHERE store_id = $1
-        ),
-        network_series AS (
-          SELECT
-            age_month,
-            AVG(revenue)::double precision AS network_avg_revenue
-          FROM aged
-          GROUP BY age_month
-        )
-        SELECT
-          TO_CHAR(u.month_date, 'YYYY-MM-DD') AS month_date,
-          TO_CHAR(u.month_date, 'YYYY-MM') AS month_label,
-          u.age_month,
-          u.unit_revenue,
-          COALESCE(n.network_avg_revenue, 0)::double precision AS network_avg_revenue
-        FROM unit_series u
-        LEFT JOIN network_series n ON n.age_month = u.age_month
-        ORDER BY u.month_date
-        `,
-        [scope.selectedRestaurantId, scope.companyFilter, includedStatuses, request.timeZone],
-      )
-    : Promise.resolve({ rows: [] as AnyRow[] });
+  const ordersPerDayPromise = loadOrdersPerDayStats(pool, scope, includedStatuses, request.timeZone, anchorDate);
+  const ordersPerHourPromise = loadOrdersPerHourStats(pool, scope, includedStatuses, request.timeZone, anchorDate);
 
   const [
     summaryRes,
     periodInfoRes,
-    qualityRes,
-    statusRes,
-    paymentRes,
     timelineRes,
     topProductsRes,
     topProductsByPointRes,
     recentOrdersRes,
-    unitVsNetworkRes,
     ordersPerDay,
+    ordersPerHour,
   ] = await Promise.all([
     summaryPromise,
     periodInfoPromise,
-    qualityPromise,
-    statusPromise,
-    paymentPromise,
     timelinePromise,
     topProductsPromise,
     topProductsByPointPromise,
     recentOrdersPromise,
-    unitVsNetworkPromise,
-    loadOrdersPerDayStats(pool, scope, includedStatuses, request.timeZone, anchorDate),
+    ordersPerDayPromise,
+    ordersPerHourPromise,
   ]);
 
   const summaryRow = summaryRes.rows[0] as AnyRow;
   const periodRow = periodInfoRes.rows[0] as AnyRow;
-  const qualityRow = qualityRes.rows[0] as AnyRow;
 
   const fromDate = toText(periodRow.from_date, anchorDate);
   const toDate = toText(periodRow.to_date, anchorDate);
@@ -1191,14 +1073,7 @@ export const loadDashboardStats = async (
       items,
     }),
   );
-  const ordersPerHourAnchor = anchorDate;
-  const ordersPerHour = await loadOrdersPerHourStats(
-    pool,
-    scope,
-    includedStatuses,
-    request.timeZone,
-    ordersPerHourAnchor,
-  );
+
   const timeline = buildContinuousTimeline(
     request.requestedPeriodMode,
     anchorDate,
@@ -1246,31 +1121,19 @@ export const loadDashboardStats = async (
       dataScope: `Скоуп данных: company_id=${scope.companyFilter || "*"}, store_id=${scope.storeFilter || "*"}`,
     },
     quality: {
-      withoutFinishedAt: toNumber(qualityRow.without_finished_at),
-      withoutClientId: toNumber(qualityRow.without_client_id),
-      withoutProducts: toNumber(qualityRow.without_products),
+      withoutFinishedAt: 0,
+      withoutClientId: 0,
+      withoutProducts: 0,
     },
     charts: {
       timeline,
       topProductsByPoint,
-      statusBreakdown: (statusRes.rows as AnyRow[]).map((row) => ({
-        label: toText(row.label, "Без статуса"),
-        value: toNumber(row.value),
-      })),
-      paymentBreakdown: (paymentRes.rows as AnyRow[]).map((row) => ({
-        label: toText(row.label, "Не указано"),
-        value: toNumber(row.value),
-      })),
+      statusBreakdown: [],
+      paymentBreakdown: [],
       unitVsNetwork: {
         unitLabel: "Продажи точки",
         networkLabel: "Средние продажи по сети",
-        points: (unitVsNetworkRes.rows as AnyRow[]).map((row) => ({
-          monthDate: toText(row.month_date, ""),
-          monthLabel: toText(row.month_label, ""),
-          ageMonth: toNumber(row.age_month),
-          unitRevenue: toNumber(row.unit_revenue),
-          networkAvgRevenue: toNumber(row.network_avg_revenue),
-        })),
+        points: [],
       },
     },
     ordersPerHour,
