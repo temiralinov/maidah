@@ -68,6 +68,7 @@ pg_dump \
   --no-owner \
   --no-privileges \
   --inserts \
+  | sed '/^SET transaction_timeout = 0;$/d' \
   | gzip -9 >"$OUTPUT_FILE"
 
 gzip -t "$OUTPUT_FILE"
