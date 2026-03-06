@@ -71,7 +71,7 @@ const statsCacheKey = (restaurantId: string, period: PeriodMode, anchorDate: str
 };
 
 app.use(express.json());
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, { index: false }));
 
 app.get("/api/restaurants", async (_req, res) => {
   try {
