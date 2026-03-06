@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Статистика ресторана</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-head">
+        <div class="hero-title">
+          <h1>Статистика архивных заказов</h1>
+          <p>Выручка, продажи и средний чек по выбранному периоду</p>
+        </div>
+        <div class="hero-status" id="updatedAt">Обновление...</div>
+      </div>
+
+      <section class="hero-controls" aria-label="Фильтры">
+        <div class="control-row" id="restaurantControl">
+          <label for="restaurantSelect">Ресторан</label>
+          <select id="restaurantSelect"></select>
+        </div>
+
+        <div class="control-row">
+          <label for="periodSelect">Период</label>
+          <select id="periodSelect">
+            <option value="all">Все время</option>
+            <option value="month">Месяц</option>
+            <option value="day">День</option>
+          </select>
+        </div>
+
+        <div class="control-row" id="dateControl">
+          <label for="dateInput">Дата</label>
+          <input id="dateInput" type="month" />
+        </div>
+
+        <button id="applyButton" type="button">Показать</button>
+      </section>
+
+      <section class="context-board" aria-label="Текущий контекст">
+        <div class="context-item" id="selectedRestaurant">Ресторан: ...</div>
+        <div class="context-item" id="selectedPeriod">Период: ...</div>
+        <div class="context-item" id="scopeNote">Скоуп данных: ...</div>
+      </section>
+    </header>
+
+    <main id="app" class="layout">
+      <section class="panel panel-wide">
+        <h2>Загрузка</h2>
+        <p>Подготавливаем отчет...</p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

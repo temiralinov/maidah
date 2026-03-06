@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.docker
+npm-debug.log*
+orders.db
+orders.db-shm
+orders.db-wal
+docker/initdb/*.sql
+docker/initdb/*.sql.gz
+!docker/initdb/.gitkeep
+!docker/initdb/README.md

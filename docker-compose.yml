@@ -1,0 +1,38 @@
+name: sheker
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-maidah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maidah}
+      POSTGRES_DB: ${POSTGRES_DB:-maidah}
+      TZ: ${TZ:-Asia/Almaty}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maidah} -d ${POSTGRES_DB:-maidah}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  pgdata:
