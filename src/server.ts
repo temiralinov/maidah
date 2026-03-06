@@ -161,7 +161,9 @@ const sendDashboardIndex = (_req: express.Request, res: express.Response) => {
   res.sendFile(path.join(publicDir, "index.html"));
 };
 
-app.get("/", sendDashboardIndex);
+app.get("/", (_req, res) => {
+  res.redirect(302, "/all");
+});
 app.get("/all", sendDashboardIndex);
 app.get("/month/:month", sendDashboardIndex);
 app.get("/day/:day", sendDashboardIndex);

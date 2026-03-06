@@ -34,7 +34,7 @@ const state = {
   canSelectRestaurant: true,
   defaultRestaurantId: "",
   selectedRestaurantId: "",
-  selectedPeriod: "month",
+  selectedPeriod: "all",
   selectedMonth: "",
   selectedDay: "",
   lastAnchorDate: "",
@@ -196,6 +196,14 @@ const addChart = (chart) => {
 const parsePathState = (pathname) => {
   const normalizedPath = pathname.replace(/\/+$/, "") || "/";
   const parts = normalizedPath.split("/").filter((part) => part.length > 0);
+
+  if (parts.length === 0) {
+    return {
+      period: "all",
+      month: "",
+      day: "",
+    };
+  }
 
   if (parts.length === 1 && parts[0] === "all") {
     return {
@@ -806,12 +814,12 @@ const loadRestaurants = async () => {
 
 const loadPreferences = () => {
   const urlState = readUrlState();
-  const savedPeriod = localStorage.getItem(STORAGE_PERIOD) || "month";
+  const savedPeriod = localStorage.getItem(STORAGE_PERIOD) || "all";
   const savedMonth = localStorage.getItem(STORAGE_MONTH) || "";
   const savedDay = localStorage.getItem(STORAGE_DAY) || "";
   const savedRestaurant = localStorage.getItem(STORAGE_RESTAURANT) || "";
 
-  state.selectedPeriod = PERIODS.has(urlState.period) ? urlState.period : PERIODS.has(savedPeriod) ? savedPeriod : "month";
+  state.selectedPeriod = PERIODS.has(urlState.period) ? urlState.period : PERIODS.has(savedPeriod) ? savedPeriod : "all";
   state.selectedMonth = urlState.month || savedMonth;
   state.selectedDay = urlState.day || savedDay;
   state.selectedRestaurantId = urlState.restaurant || savedRestaurant;
