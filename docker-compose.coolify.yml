@@ -16,7 +16,7 @@ services:
       retries: 10
       start_period: 15s
     volumes:
-      - pgdata_seed:/var/lib/postgresql/data
+      - pgdata_seed_fast:/var/lib/postgresql/data
 
   app:
     build:
@@ -44,4 +44,4 @@ services:
       DEFAULT_STORE_ID: ${DEFAULT_STORE_ID:-}
 
 volumes:
-  pgdata_seed:
+  pgdata_seed_fast:
