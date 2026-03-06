@@ -22,21 +22,22 @@ npm run dev
 
 ## Docker Compose (сервер)
 
-Цель: на сервере не поднимать PostgreSQL отдельно, а запускать `app + db` вместе, при этом `db` стартует уже с вашими локальными данными.
+Цель: на сервере не поднимать PostgreSQL отдельно, а запускать `app + db` вместе.
+PostgreSQL стартует с сидом, который хранится прямо в Git (`docker/initdb/01-local-seed.sql.gz`).
 
 ### 1) Подготовка локального SQL-дампа
 
 ```bash
-cp .env.docker.example .env.docker
 ./scripts/export_local_pg_dump.sh
+git add docker/initdb/01-local-seed.sql.gz
+git commit -m "chore: update postgres seed"
+git push
 ```
-
-После выполнения появится файл:
-`docker/initdb/01-local-seed.sql.gz`
 
 ### 2) Запуск на сервере
 
 ```bash
+cp .env.docker.example .env.docker
 docker compose --env-file .env.docker up -d --build
 ```
 

@@ -2,7 +2,9 @@ name: sheker
 
 services:
   db:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-maidah}
@@ -19,7 +21,6 @@ services:
       start_period: 15s
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
 
   app:
     build:

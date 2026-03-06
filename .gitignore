@@ -10,3 +10,4 @@ docker/initdb/*.sql
 docker/initdb/*.sql.gz
 !docker/initdb/.gitkeep
 !docker/initdb/README.md
+!docker/initdb/01-local-seed.sql.gz
