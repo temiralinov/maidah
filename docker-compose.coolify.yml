@@ -1,0 +1,47 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-maidah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maidah}
+      POSTGRES_DB: ${POSTGRES_DB:-maidah}
+      TZ: ${TZ:-Asia/Almaty}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-maidah} -d ${POSTGRES_DB:-maidah}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      PGHOST: "db"
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-maidah}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-maidah}
+      PGDATABASE: ${POSTGRES_DB:-maidah}
+      PGPOOL_MAX: ${PGPOOL_MAX:-10}
+      PGPOOL_IDLE_TIMEOUT_MS: ${PGPOOL_IDLE_TIMEOUT_MS:-30000}
+      STATS_CACHE_TTL_MS: ${STATS_CACHE_TTL_MS:-30000}
+      RESTAURANTS_CACHE_TTL_MS: ${RESTAURANTS_CACHE_TTL_MS:-300000}
+      INCLUDED_ORDER_STATUSES: ${INCLUDED_ORDER_STATUSES:-archived}
+      ANALYTICS_TIME_ZONE: ${ANALYTICS_TIME_ZONE:-Asia/Almaty}
+      RESTAURANT_VISIBILITY: ${RESTAURANT_VISIBILITY:-company}
+      DEFAULT_COMPANY_ID: ${DEFAULT_COMPANY_ID:-sheker-coffee}
+      DEFAULT_STORE_ID: ${DEFAULT_STORE_ID:-}
+
+volumes:
+  pgdata:

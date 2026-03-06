@@ -43,6 +43,14 @@ docker compose --env-file .env.docker up -d --build
 
 Откройте: `http://<server-host>:3000`
 
+### Деплой в Coolify
+
+Для ресурса типа `Public Repository` + `Docker Compose` укажите:
+
+- `Docker Compose Location`: `/docker-compose.coolify.yml`
+- `Domain` только для сервиса `app`: `https://sheker.temiralinov.me`
+- Для `db` домен не указывать.
+
 ### 3) Важный момент про повторный импорт
 
 Init-скрипты из `docker/initdb` выполняются только при первом создании volume `pgdata`.
